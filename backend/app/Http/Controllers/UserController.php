@@ -30,7 +30,7 @@ class UserController extends Controller
                     'password' => 'required|min:8', // Add password confirmation
                 ]
             );
-                         
+
             if ($validateUser->fails()) {
                 return response()->json([
                     'status' => false,
@@ -132,6 +132,78 @@ class UserController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'User Logged Out Successfully'
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update User Profile
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function modifier(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            // Validate request
+            $validateUser = Validator::make(
+                $request->all(),
+                [
+                    'nom' => 'sometimes|string|max:255',
+                    'prenom' => 'sometimes|string|max:255',
+                    'email' => 'sometimes|email|unique:users,email,' . $user->id,
+                    'phone_number' => 'sometimes|string|unique:users,phone_number,' . $user->id,
+                ]
+            );
+
+            if ($validateUser->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validateUser->errors()
+                ], 401);
+            }
+
+            // Update user
+            User::where('id', $user->id)->update($request->all());
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Profile updated successfully',
+                'user' => $user
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete User Account
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy()
+    {
+        try {
+            $user = Auth::user();
+
+            // Delete user's tokens
+            User::where('id', $user->id)->tokens()->delete();
+
+            // Delete user
+            User::where('id', $user->id)->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Account deleted successfully'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
